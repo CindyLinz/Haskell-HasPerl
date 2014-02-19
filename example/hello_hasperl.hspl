@@ -1,0 +1,14 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+sub hello_haskell {
+  my $name = shift;
+  #{
+    name <- readFindSV "$name"
+    liftIO $ putStrLn "Hello " ++ name ++ "!"
+  }
+}
+
+hello_haskell(#{ return $ "Has" ++ "kell" });
