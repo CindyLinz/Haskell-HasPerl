@@ -23,4 +23,5 @@ executable hasperl
   build-depends:       base ==4.6.*
                      , ghc ==7.6.*
                      , ghc-paths ==0.1.*
+                     , bytestring ==0.10.*
                      , Perl ==0.1.*
