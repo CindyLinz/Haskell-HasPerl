@@ -3,9 +3,13 @@
 use strict;
 use warnings;
 
+##{
+import Control.Monad.IO.Class
+}
+
 sub hello_haskell {
   my $name = shift;
-  #{
+  #{ do
     name <- readFindSV "$name"
     liftIO $ putStrLn "Hello " ++ name ++ "!"
   }
