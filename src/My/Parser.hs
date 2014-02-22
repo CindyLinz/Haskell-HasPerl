@@ -1,11 +1,44 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Parser where
+module My.Parser 
+  ( parse
+  , compileFile
+  ) where
 
 import Data.Char
 import Data.String
+import Data.List
 
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Lazy.Builder as BB
+
+stringToByteString = BL.pack . map (fromIntegral . ord)
+
+-- | Generate a/b/c/x.hs and a/b/c/x.pl from a/b/c/x.hspl
+compileFile
+  :: FilePath -- ^ hspl path
+  -> IO (FilePath, FilePath) -- ^ (perl path, haskell path)
+compileFile path = do
+  src <- BL.readFile path
+  let
+    pathPrefix =
+      if ".hspl" `isSuffixOf` path
+        then take (length path - 5) path
+        else path
+    perlPath = pathPrefix ++ ".pl"
+    haskellPath = pathPrefix ++ ".hs"
+    namePrefix = "HasPerl::lambda::" ++ toName pathPrefix
+    toName [] = []
+    toName (c:cs) =
+      let others = toName cs
+      in case c of
+        '.' -> '_' : others
+        '/' -> "::" ++ others
+        '\\' -> "::" ++ others
+        _ -> c : others
+    (perl, haskell) = parse (stringToByteString namePrefix) src
+  BL.writeFile perlPath perl
+  BL.writeFile haskellPath haskell
+  return (perlPath, haskellPath)
 
 data Lexeme
   = PlPart BL.ByteString
@@ -16,8 +49,8 @@ data Lexeme
 lambdaPrefix :: IsString a => a
 lambdaPrefix = "HasPerl::lambda"
 
-lambdaName :: Int -> BL.ByteString
-lambdaName ser = BL.pack $ map (fromIntegral . ord) (lambdaPrefix ++ show ser)
+lambdaName :: BL.ByteString -> Int -> BL.ByteString
+lambdaName prefix ser = prefix `BL.append` stringToByteString (show ser)
 
 analyzePos
   :: Int -- ^ init line num
@@ -37,32 +70,23 @@ makeSpace
   -> BL.ByteString
 makeSpace n = BL.pack $ map (fromIntegral . ord) $ replicate n ' '
 
-makeExpr
-  :: Int -- ^ offset
-  -> Int -- ^ serial
-  -> BL.ByteString -- ^ code
-  -> BL.ByteString
-makeExpr offset ser code =
-  "-- Expr\n" `BL.append`
-  lambdaName ser
-
 parse
-  :: Int -- ^ serial
+  :: BL.ByteString -- ^ prefix
   -> BL.ByteString -- ^ hasperl
   -> (BL.ByteString, BL.ByteString) -- ^ (perl, haskell)
-parse ser hspl = (perl, haskell) where
+parse prefix hspl = (perl, haskell) where
   lexemes = extractHaskell hspl
 
-  perl = genPerl ser lexemes
+  perl = genPerl 0 lexemes
   genPerl ser [] = BL.empty
   genPerl ser (PlPart p : others) = p `BL.append` genPerl ser others
   genPerl ser (HsDecl _ : others) = genPerl ser others
-  genPerl ser (HsExpr _ : others) = 32 `BL.cons` lambdaName ser `BL.append` "()" `BL.append` genPerl (id $! ser+1) others
+  genPerl ser (HsExpr _ : others) = 32 `BL.cons` lambdaName prefix ser `BL.append` "()" `BL.append` genPerl (id $! ser+1) others
 
   haskell = preludeDecl `BL.append` haskellDecl `BL.append` initDecl
   initDecl = "init :: Perl.Monad.PerlT s IO ()\ninit = do { return () " `BL.append` registerSubs `BL.append` "\n}\n" where
-    registerSubs = BL.concat $ zipWith decorateCode [ser..] haskellExprs
-    decorateCode ser code = "\n; (Perl.Sub.defSub \"" `BL.append` lambdaName ser `BL.append` "\" :: Perl.Sub.SubReturn ret => Perl.Monad.PerlSub s ret -> Perl.Monad.Perl s ()) $ \n" `BL.append` code
+    registerSubs = BL.concat $ zipWith decorateCode [0..] haskellExprs
+    decorateCode ser code = "\n; (Perl.Sub.defSub \"" `BL.append` lambdaName prefix ser `BL.append` "\" :: Perl.Sub.SubReturn ret => Perl.Monad.PerlSub s ret -> Perl.Monad.Perl s ()) $ \n" `BL.append` code
 
   preludeDecl = "import qualified Perl.Monad\nimport qualified Perl.Sub\n------\n"
 
@@ -85,12 +109,6 @@ parse ser hspl = (perl, haskell) where
       where (lineNo', offset') = analyzePos lineNo offset h
     HsExpr h : others -> (makeSpace offset `BL.append` h) : genHaskellExprs lineNo' offset' others
       where (lineNo', offset') = analyzePos lineNo offset h
-
-  ser' = genSer ser lexemes
-  genSer ser [] = ser
-  genSer ser (PlPart _ : others) = genSer ser others
-  genSer ser (HsDecl _ : others) = genSer ser others
-  genSer ser (HsExpr _ : others) = genSer (id $! ser+1) others
 
 extractHaskell
   :: BL.ByteString -- ^ hasperl
