@@ -59,10 +59,12 @@ parse ser hspl = (perl, haskell) where
   genPerl ser (HsDecl _ : others) = genPerl ser others
   genPerl ser (HsExpr _ : others) = 32 `BL.cons` lambdaName ser `BL.append` "()" `BL.append` genPerl (id $! ser+1) others
 
-  haskell = haskellDecl `BL.append` initDecl
-  initDecl = "init :: PerlT s IO ()\ninit = do { return () " `BL.append` registerSubs `BL.append` "\n}\n" where
+  haskell = preludeDecl `BL.append` haskellDecl `BL.append` initDecl
+  initDecl = "init :: Perl.Monad.PerlT s IO ()\ninit = do { return () " `BL.append` registerSubs `BL.append` "\n}\n" where
     registerSubs = BL.concat $ zipWith decorateCode [ser..] haskellExprs
-    decorateCode ser code = "\n; (defSub \"" `BL.append` lambdaName ser `BL.append` "\" :: SubReturn ret => PerlSub s ret -> Perl s ()) $ \n" `BL.append` code
+    decorateCode ser code = "\n; (Perl.Sub.defSub \"" `BL.append` lambdaName ser `BL.append` "\" :: Perl.Sub.SubReturn ret => Perl.Monad.PerlSub s ret -> Perl.Monad.Perl s ()) $ \n" `BL.append` code
+
+  preludeDecl = "import qualified Perl.Monad\nimport qualified Perl.Sub\n------\n"
 
   haskellDecl = genHaskellDecl 0 0 lexemes
   genHaskellDecl lineNo offset lexemes = case lexemes of
