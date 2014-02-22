@@ -5,13 +5,15 @@ use warnings;
 
 ##{
 import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
+import Perl.Embed
 }
 
 sub hello_haskell {
-  my $name = shift;
+  my($name) = @_;
   #{ do
-    name <- readFindSV "$name"
-    liftIO $ putStrLn "Hello " ++ name ++ "!"
+    name <- lift $ readFindSV "$name"
+    liftIO $ putStrLn $ "Hello " ++ name ++ "!"
   }
 }
 
