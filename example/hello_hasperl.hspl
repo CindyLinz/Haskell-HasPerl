@@ -99,7 +99,7 @@ import Foreign.Ptr
         set <- deRefStablePtr p
         freeStablePtr p
         let set' = foldl' (\set n -> IS.insert n set) set ns
-        stablePtrToInt <$> newStablePtr set'
+        stablePtrToInt <$> (newStablePtr $! set')
     };
   }
 
