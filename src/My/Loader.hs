@@ -39,6 +39,6 @@ loadHasperl path = do
       lift modInit
 
       perl <- liftIO $ readFile perlPath
-      lift $ eval perl
+      () <- lift $ eval perl
 
       return ()
