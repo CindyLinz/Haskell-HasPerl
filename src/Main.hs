@@ -6,11 +6,14 @@ import Perl.Monad
 
 import My.Loader
 
+main :: IO ()
 main = do
   args <- getArgs
   let
     perlFilename = fetchPerlFilename args
-  runPerlT $ loadHasperl perlFilename
+  runPerlT $ do
+    prepareLoader
+    loadHasperl perlFilename
 
 fetchPerlFilename = go where
   go [] = "/dev/stdin"

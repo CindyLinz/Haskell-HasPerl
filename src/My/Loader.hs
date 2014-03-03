@@ -1,10 +1,13 @@
 module My.Loader
   ( loadHasperl
+  , prepareLoader
   ) where
 
 import Control.Applicative
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
+
+import Data.List
 
 import DynFlags
 import GHC
@@ -14,11 +17,30 @@ import MonadUtils (MonadIO)
 
 import Perl.Monad
 import Perl.Eval
+import Perl.Type
+import Perl.Sub
+import Perl.Constant
 
 import My.MonadUtil
 import qualified My.Parser
 
-loadHasperl :: FilePath -> PerlT s IO ()
+strReplace :: String -> String -> String -> String
+strReplace str find replace = go str where
+  findLen = length find
+  go str = if find `isPrefixOf` str
+    then replace ++ go (drop findLen str)
+    else str
+
+prepareLoader :: PerlT s IO ()
+prepareLoader = do
+  defSub "HasPerl::require" $ \modName -> do
+    lift $ liftIO $ putStrLn $ "HasPerl::require(" ++ modName ++ ")"
+    let
+      filename = strReplace modName "::" "/" ++ ".hspm"
+    sv <- lift $ loadHasperl filename
+    retSub (sv :: SV)
+
+loadHasperl :: Retrievable ret => FilePath -> PerlT s IO ret
 loadHasperl path = do
   (perlPath, haskellPath) <- liftIO $ My.Parser.compileFile path
   defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
@@ -39,6 +61,4 @@ loadHasperl path = do
       lift modInit
 
       perl <- liftIO $ readFile perlPath
-      () <- lift $ eval perl
-
-      return ()
+      lift $ eval perl

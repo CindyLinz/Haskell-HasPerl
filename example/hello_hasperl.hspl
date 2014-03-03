@@ -17,6 +17,9 @@ import Foreign.Ptr
 
 }
 
+HasPerl::require('Map');
+
+=removed
 {
   package Map;
 
@@ -144,6 +147,7 @@ import Foreign.Ptr
     die "not implemented";
   }
 }
+=cut
 
 ##{
 import Control.Monad
@@ -183,7 +187,9 @@ hello_haskell(#{ return $ take 3 "Haskell" }."Perl ".encode_json([1,2,3]));
 tie my @arr, 'Map';
 print "o\n";
 print 0+@arr, $/;
-push @arr, 1, 3, 2, 6, 4, 4, 3, 5, 7, 9;
+for(1..10) {
+  push @arr, 1 + int rand 10_0000;
+}
 #my $one = pop @arr;
 print 0+@arr, $/;
 print "n\n";

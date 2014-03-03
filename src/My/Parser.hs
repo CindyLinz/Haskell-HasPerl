@@ -20,11 +20,11 @@ compileFile
 compileFile path = do
   src <- BL.readFile path
   let
-    pathPrefix =
-      if ".hspl" `isSuffixOf` path
-        then take (length path - 5) path
-        else path
-    perlPath = pathPrefix ++ ".pl"
+    (pathPrefix, perlPostfix) =
+      if ".hspl" `isSuffixOf` path || ".hspm" `isSuffixOf` path
+        then (take (length path - 5) path, '.' : drop (length path - 2) path)
+        else (path, ".pl")
+    perlPath = pathPrefix ++ perlPostfix
     haskellPath = pathPrefix ++ ".hs"
     namePrefix = "HasPerl::lambda::" ++ toName pathPrefix
     toName [] = []
