@@ -37,10 +37,12 @@ prepareLoader = do
     lift $ liftIO $ putStrLn $ "HasPerl::require(" ++ modName ++ ")"
     let
       filename = strReplace modName "::" "/" ++ ".hspm"
-    sv <- lift $ loadHasperl filename
-    retSub (sv :: SV)
+    res <- lift $ loadHasperl filename
+    case res of
+      Right sv -> retSub (sv :: SV)
+      Left msg -> retSub ()
 
-loadHasperl :: Retrievable ret => FilePath -> PerlT s IO ret
+loadHasperl :: Retrievable ret => FilePath -> PerlT s IO (Either String ret)
 loadHasperl path = do
   (perlPath, haskellPath) <- liftIO $ My.Parser.compileFile path
   defaultErrorHandler defaultFatalMessager defaultFlushOut $ do

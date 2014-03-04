@@ -11,9 +11,13 @@ main = do
   args <- getArgs
   let
     perlFilename = fetchPerlFilename args
-  runPerlT $ do
+  res <- runPerlT $ do
     prepareLoader
     loadHasperl perlFilename
+  case res of
+    Right () -> return ()
+    Left msg -> do
+      putStrLn $ "perl exec fail: " ++ msg
 
 fetchPerlFilename = go where
   go [] = "/dev/stdin"

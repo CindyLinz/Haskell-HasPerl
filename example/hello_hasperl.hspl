@@ -173,7 +173,7 @@ sayCindyIsBeautiful = putStrLn $ "CindyLinz is beautiful"
 sub hello_haskell {
   my $name = shift;
   #{ do
-    () <- lift $ eval "$name .= ' xx'";
+    Right () <- lift $ eval "$name .= ' xx'";
     name <- lift $ readFindSV "$name"
 
     ser <- lift $ call "encode_json" =<< newRef =<< toAV ([4,5,6] :: [Int])
