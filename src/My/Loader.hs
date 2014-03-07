@@ -12,8 +12,8 @@ import Data.List
 import DynFlags
 import GHC
 import GHC.Paths (libdir)
-import GhcMonad (liftIO, liftGhcT)
-import MonadUtils (MonadIO)
+import GhcMonad (liftGhcT)
+import MonadUtils (liftIO, MonadIO)
 
 import Perl.Monad
 import Perl.Eval
@@ -34,10 +34,10 @@ strReplace str find replace = go str where
 prepareLoader :: PerlT s IO ()
 prepareLoader = do
   defSub "HasPerl::require" $ \modName -> do
-    lift $ liftIO $ putStrLn $ "HasPerl::require(" ++ modName ++ ")"
+    liftIO $ putStrLn $ "HasPerl::require(" ++ modName ++ ")"
     let
       filename = strReplace modName "::" "/" ++ ".hspm"
-    res <- lift $ loadHasperl filename
+    res <- loadHasperl filename
     case res of
       Right sv -> retSub (sv :: SV)
       Left msg -> retSub ()

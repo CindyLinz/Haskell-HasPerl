@@ -50,7 +50,7 @@ sub STORE {
 sub FETCHSIZE {
   my $p = $_[0][0];
   return #{ do
-    p <- lift $ readFindSV "$p"
+    p <- readFindSV "$p"
     liftIO $ IS.size <$> deRefStablePtr (intToStablePtr p)
   };
 }
@@ -77,7 +77,7 @@ sub POP {
   my $p = $_[0][0];
   my $o;
   ($_[0][0], $o) = #{ do
-    p <- lift $ intToStablePtr <$> readFindSV "$p"
+    p <- intToStablePtr <$> readFindSV "$p"
     (o, p') <- liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p
@@ -103,8 +103,8 @@ sub PUSH {
   my $p = $this->[0];
   my @n = @_;
   $this->[0] = #{ do
-    p <- lift $ intToStablePtr <$> readFindSV "$p"
-    ns <- lift $ fromAV =<< findAV "@n"
+    p <- intToStablePtr <$> readFindSV "$p"
+    ns <- fromAV =<< findAV "@n"
     liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p
@@ -117,7 +117,7 @@ sub SHIFT {
   my $p = $_[0][0];
   my $o;
   ($_[0][0], $o) = #{ do
-    p <- lift $ intToStablePtr <$> readFindSV "$p"
+    p <- intToStablePtr <$> readFindSV "$p"
     (o, p') <- liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p

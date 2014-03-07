@@ -84,11 +84,11 @@ parse prefix hspl = (perl, haskell) where
   genPerl ser (HsExpr _ : others) = 32 `BL.cons` lambdaName prefix ser `BL.append` "()" `BL.append` genPerl (id $! ser+1) others
 
   haskell = preludeDecl `BL.append` haskellDecl `BL.append` initDecl
-  initDecl = "init :: Perl.Monad.PerlT s IO ()\ninit = do { return () " `BL.append` registerSubs `BL.append` "\n}\n" where
+  initDecl = "init :: Perl.Type.PerlT s IO ()\ninit = do { return () " `BL.append` registerSubs `BL.append` "\n}\n" where
     registerSubs = BL.concat $ zipWith decorateCode [0..] haskellExprs
-    decorateCode ser code = "\n; (Perl.Sub.defSub \"" `BL.append` lambdaName prefix ser `BL.append` "\" :: Perl.Sub.SubReturn ret => Perl.Monad.PerlSub s ret -> Perl.Monad.Perl s ()) $ \n" `BL.append` code
+    decorateCode ser code = "\n; (Perl.Sub.defSub \"" `BL.append` lambdaName prefix ser `BL.append` "\" :: Perl.SVArray.ToSVArray ret => Perl.Type.Perl s ret -> Perl.Type.Perl s ()) $ \n" `BL.append` code
 
-  preludeDecl = "import qualified Perl.Monad\nimport qualified Perl.Sub\n------\n"
+  preludeDecl = "import qualified Perl.Type\nimport qualified Perl.Sub\nimport qualified Perl.SVArray\n------\n"
 
   haskellDecl = genHaskellDecl 0 0 lexemes
   genHaskellDecl lineNo offset lexemes = case lexemes of

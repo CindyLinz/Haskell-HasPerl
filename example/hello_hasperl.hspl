@@ -43,7 +43,7 @@ HasPerl::require('Map');
   sub FETCHSIZE {
     my $p = $_[0][0];
     return #{ do
-      p <- lift $ readFindSV "$p"
+      p <- readFindSV "$p"
       liftIO $ IS.size <$> deRefStablePtr (intToStablePtr p)
     };
   }
@@ -70,7 +70,7 @@ HasPerl::require('Map');
     my $p = $_[0][0];
     my $o;
     ($_[0][0], $o) = #{ do
-      p <- lift $ intToStablePtr <$> readFindSV "$p"
+      p <- intToStablePtr <$> readFindSV "$p"
       (o, p') <- liftIO $ do
         set <- deRefStablePtr p
         freeStablePtr p
@@ -96,8 +96,8 @@ HasPerl::require('Map');
     my $p = $this->[0];
     my @n = @_;
     $this->[0] = #{ do
-      p <- lift $ intToStablePtr <$> readFindSV "$p"
-      ns <- lift $ fromAV =<< findAV "@n"
+      p <- intToStablePtr <$> readFindSV "$p"
+      ns <- fromAV =<< findAV "@n"
       liftIO $ do
         set <- deRefStablePtr p
         freeStablePtr p
@@ -110,7 +110,7 @@ HasPerl::require('Map');
     my $p = $_[0][0];
     my $o;
     ($_[0][0], $o) = #{ do
-      p <- lift $ intToStablePtr <$> readFindSV "$p"
+      p <- intToStablePtr <$> readFindSV "$p"
       (o, p') <- liftIO $ do
         set <- deRefStablePtr p
         freeStablePtr p
@@ -173,10 +173,10 @@ sayCindyIsBeautiful = putStrLn $ "CindyLinz is beautiful"
 sub hello_haskell {
   my $name = shift;
   #{ do
-    Right () <- lift $ eval "$name .= ' xx'";
-    name <- lift $ readFindSV "$name"
+    Right () <- eval "$name .= ' xx'";
+    name <- readFindSV "$name"
 
-    ser <- lift $ call "encode_json" =<< newRef =<< toAV ([4,5,6] :: [Int])
+    ser <- call "encode_json" =<< newRef =<< toAV ([4,5,6] :: [Int])
     liftIO $ putStrLn $ "Hello " ++ name ++ " !!! " ++ ser
     liftIO $ sayCindyIsBeautiful
   }
