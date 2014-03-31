@@ -3,6 +3,8 @@ use warnings;
 
 use AE;
 use JSON::XS;
+use Data::Dumper;
+$Data::Dumper::Indent = 0;
 
 my $cv = AE::cv;
 my $t = AE::timer 2, 0, sub { $cv->send };
@@ -16,6 +18,8 @@ import Foreign.StablePtr
 import Foreign.Ptr
 
 }
+
+use lib 'example';
 
 HasPerl::require('Map');
 
@@ -34,8 +38,7 @@ HasPerl::require('Map');
 
   sub FETCH {
     die "not implemented";
-  }
-
+  } 
   sub STORE {
     die "not implemented";
   }
@@ -43,7 +46,7 @@ HasPerl::require('Map');
   sub FETCHSIZE {
     my $p = $_[0][0];
     return #{ do
-      p <- readFindSV "$p"
+      p <- readScalar =<< cap "$p"
       liftIO $ IS.size <$> deRefStablePtr (intToStablePtr p)
     };
   }
@@ -70,7 +73,7 @@ HasPerl::require('Map');
     my $p = $_[0][0];
     my $o;
     ($_[0][0], $o) = #{ do
-      p <- intToStablePtr <$> readFindSV "$p"
+      p <- cap "$p" >>= readScalar >>= return . intToStablePtr
       (o, p') <- liftIO $ do
         set <- deRefStablePtr p
         freeStablePtr p
@@ -96,8 +99,8 @@ HasPerl::require('Map');
     my $p = $this->[0];
     my @n = @_;
     $this->[0] = #{ do
-      p <- intToStablePtr <$> readFindSV "$p"
-      ns <- fromAV =<< findAV "@n"
+      p <- cap "$p" >>= readScalar >>= return . intToStablePtr
+      ns <- readArray =<< cap "@n"
       liftIO $ do
         set <- deRefStablePtr p
         freeStablePtr p
@@ -110,7 +113,7 @@ HasPerl::require('Map');
     my $p = $_[0][0];
     my $o;
     ($_[0][0], $o) = #{ do
-      p <- intToStablePtr <$> readFindSV "$p"
+      p <- cap "$p" >>= readScalar >>= return . intToStablePtr
       (o, p') <- liftIO $ do
         set <- deRefStablePtr p
         freeStablePtr p
@@ -154,12 +157,13 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.List
-import Perl.Embed
-import Perl.Call
+--import Perl.Embed
+--import Perl.Call
 import Perl.AV
 import Perl.SV
 import Perl.Ref
 import Perl.Sub
+import Perl.Accessor
 
 intToStablePtr :: Int -> StablePtr a
 intToStablePtr = castPtrToStablePtr . intPtrToPtr . fromIntegral
@@ -170,13 +174,17 @@ stablePtrToInt = fromIntegral . ptrToIntPtr . castStablePtrToPtr
 sayCindyIsBeautiful = putStrLn $ "CindyLinz is beautiful"
 }
 
+sub bye {
+  die "bye";
+}
+
 sub hello_haskell {
   my $name = shift;
   #{ do
-    Right () <- eval "$name .= ' xx'";
-    name <- readFindSV "$name"
+    eval "$name .= ' xx'";
+    name <- readScalar =<< cap "$name"
 
-    ser <- call "encode_json" =<< newRef =<< toAV ([4,5,6] :: [Int])
+    ser <- readScalar =<< callArgs "encode_json" =<< newRef =<< toAV ([4,5,6] :: [Int])
     liftIO $ putStrLn $ "Hello " ++ name ++ " !!! " ++ ser
     liftIO $ sayCindyIsBeautiful
   }
@@ -196,6 +204,31 @@ print "n\n";
 
 while( my $n = shift @arr ) {
   print "get $n\n";
+}
+
+eval {
+  #{ do
+    callArgs "bye" "dead"
+    return ()
+  };
+};
+print "dead: $@\n";
+
+my $a = [3,2,1,{ a => 1, b => 2 }];
+#{ do
+    cap "$a" @- 3 %- "cccc" $= ":DDD"
+    eval "$a->[0] += 5"
+    return ()
+};
+print Dumper($a),$/;
+
+for(1,2,3,4,6,9,15) {
+    #{ do
+        let fib = 1 : 1 : zipWith (+) fib (tail fib)
+
+        i <- readScalar =<< cap "$_"
+        liftIO $ putStrLn $ show $ fib !! i
+    };
 }
 
 #$cv->recv;

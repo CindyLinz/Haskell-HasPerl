@@ -23,6 +23,7 @@ import Perl.AV
 import Perl.SV
 import Perl.Ref
 import Perl.Sub
+import Perl.Accessor
 
 intToStablePtr :: Int -> StablePtr a
 intToStablePtr = castPtrToStablePtr . intPtrToPtr . fromIntegral
@@ -48,9 +49,8 @@ sub STORE {
 }
 
 sub FETCHSIZE {
-  my $p = $_[0][0];
-  return #{ do
-    p <- readFindSV "$p"
+  #{ do
+    p <- readScalar =<< cap "@_" @- 0 @- 0
     liftIO $ IS.size <$> deRefStablePtr (intToStablePtr p)
   };
 }
@@ -74,10 +74,9 @@ sub DESTROY {
 }
 
 sub POP {
-  my $p = $_[0][0];
-  my $o;
-  ($_[0][0], $o) = #{ do
-    p <- intToStablePtr <$> readFindSV "$p"
+  #{ do
+    let capP = cap "@_" @- 0 @- 0
+    p <- return . intToStablePtr =<< readScalar =<< capP
     (o, p') <- liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p
@@ -91,25 +90,25 @@ sub POP {
 
       p' <- stablePtrToInt <$> newStablePtr set'
       return (o, p')
+    capP $= p'
     case o of
-      Just o' -> retSub (p', o')
-      Nothing -> retSub (p', ())
+      Just o' -> retSub o'
+      Nothing -> retSub ()
   };
-  return $o;
 }
 
 sub PUSH {
-  my $this = shift;
-  my $p = $this->[0];
-  my @n = @_;
-  $this->[0] = #{ do
-    p <- intToStablePtr <$> readFindSV "$p"
-    ns <- fromAV =<< findAV "@n"
-    liftIO $ do
+  #{ do
+    let capP = cap "@_" @- 0 @- 0
+    p <- return . intToStablePtr =<< readScalar =<< capP
+    (_:ns) <- fromAV =<< findAV "@_"
+    p' <- liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p
       let set' = foldl' (\set n -> IS.insert n set) set ns
       stablePtrToInt <$> (newStablePtr $! set')
+    capP $= p'
+    return ()
   };
 }
 
@@ -117,7 +116,7 @@ sub SHIFT {
   my $p = $_[0][0];
   my $o;
   ($_[0][0], $o) = #{ do
-    p <- intToStablePtr <$> readFindSV "$p"
+    p <- return . intToStablePtr =<< readScalar =<< cap "$p"
     (o, p') <- liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p

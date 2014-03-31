@@ -34,15 +34,12 @@ strReplace str find replace = go str where
 prepareLoader :: PerlT s IO ()
 prepareLoader = do
   defSub "HasPerl::require" $ \modName -> do
-    liftIO $ putStrLn $ "HasPerl::require(" ++ modName ++ ")"
     let
       filename = strReplace modName "::" "/" ++ ".hspm"
-    res <- loadHasperl filename
-    case res of
-      Right sv -> retSub (sv :: SV)
-      Left msg -> retSub ()
+    ret <- loadHasperl filename
+    return (ret :: SVArray)
 
-loadHasperl :: Retrievable ret => FilePath -> PerlT s IO (Either String ret)
+loadHasperl :: Retrievable ret => FilePath -> PerlT s IO ret
 loadHasperl path = do
   (perlPath, haskellPath) <- liftIO $ My.Parser.compileFile path
   defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
