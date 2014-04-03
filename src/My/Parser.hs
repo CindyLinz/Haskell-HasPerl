@@ -150,10 +150,10 @@ extractHaskell = takePerl where
     middleLen = BL.length middle
     (selfRes, laterRes) = if BL.null later
       then (perl, [])
-      else if middleLen == 1 && laterHd == fromIntegral (ord '{')
+      else if middleLen == 2 && laterHd == fromIntegral (ord '{')
       then -- into haskell expr
         (former, takeHs HsExpr (BL.tail later))
-      else if middleLen == 2 && laterHd == fromIntegral (ord '{')
+      else if middleLen == 3 && laterHd == fromIntegral (ord '{')
         then -- into haskell decl
           (former, takeHs HsDecl (BL.tail later))
         else -- still in perl

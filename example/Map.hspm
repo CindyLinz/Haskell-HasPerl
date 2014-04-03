@@ -5,7 +5,7 @@ use warnings;
 
 print "Loading Map.hspm\n";
 
-##{
+###{
 import Control.Applicative
 
 import qualified Data.IntSet as IS
@@ -35,7 +35,7 @@ sayCindyIsBeautiful = putStrLn $ "CindyLinz is beautiful"
 }
 
 sub TIEARRAY {
-  my $p = #{ liftIO $ stablePtrToInt <$> newStablePtr IS.empty
+  my $p = ##{ liftIO $ stablePtrToInt <$> newStablePtr IS.empty
   };
   return bless [$p], $_[0];
 }
@@ -49,7 +49,7 @@ sub STORE {
 }
 
 sub FETCHSIZE {
-  #{ do
+  ##{ do
     p <- readScalar =<< cap "@_" @- 0 @- 0
     liftIO $ IS.size <$> deRefStablePtr (intToStablePtr p)
   };
@@ -60,21 +60,21 @@ sub STORESIZE {
 }
 
 sub UNTIE {
-  #{
+  ##{
     liftIO $ putStrLn "UNTIE from haskell"
   };
   print "UNTIE\n";
 }
 
 sub DESTROY {
-  #{
+  ##{
     liftIO $ putStrLn "DESTROY from haskell"
   };
   print "DESTROY\n";
 }
 
 sub POP {
-  #{ do
+  ##{ do
     let capP = cap "@_" @- 0 @- 0
     p <- return . intToStablePtr =<< readScalar =<< capP
     (o, p') <- liftIO $ do
@@ -98,7 +98,7 @@ sub POP {
 }
 
 sub PUSH {
-  #{ do
+  ##{ do
     let capP = cap "@_" @- 0 @- 0
     p <- return . intToStablePtr =<< readScalar =<< capP
     (_:ns) <- fromAV =<< findAV "@_"
@@ -115,7 +115,7 @@ sub PUSH {
 sub SHIFT {
   my $p = $_[0][0];
   my $o;
-  ($_[0][0], $o) = #{ do
+  ($_[0][0], $o) = ##{ do
     p <- return . intToStablePtr =<< readScalar =<< cap "$p"
     (o, p') <- liftIO $ do
       set <- deRefStablePtr p

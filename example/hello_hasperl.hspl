@@ -9,7 +9,7 @@ $Data::Dumper::Indent = 0;
 my $cv = AE::cv;
 my $t = AE::timer 2, 0, sub { $cv->send };
 
-##{
+###{
 import Control.Applicative
 
 import qualified Data.IntSet as IS
@@ -152,7 +152,7 @@ HasPerl::require('Map');
 }
 =cut
 
-##{
+###{
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
@@ -180,7 +180,7 @@ sub bye {
 
 sub hello_haskell {
   my $name = shift;
-  #{ do
+  ##{ do
     eval "$name .= ' xx'";
     name <- readScalar =<< cap "$name"
 
@@ -190,7 +190,7 @@ sub hello_haskell {
   }
 }
 
-hello_haskell(#{ return $ take 3 "Haskell" }."Perl ".encode_json([1,2,3]));
+hello_haskell(##{ return $ take 3 "Haskell" }."Perl ".encode_json([1,2,3]));
 
 tie my @arr, 'Map';
 print "o\n";
@@ -207,7 +207,7 @@ while( my $n = shift @arr ) {
 }
 
 eval {
-  #{ do
+  ##{ do
     callArgs "bye" "dead"
     return ()
   };
@@ -215,7 +215,7 @@ eval {
 print "dead: $@\n";
 
 my $a = [3,2,1,{ a => 1, b => 2 }];
-#{ do
+##{ do
     cap "$a" @- 3 %- "cccc" $= ":DDD"
     eval "$a->[0] += 5"
     return ()
@@ -223,12 +223,24 @@ my $a = [3,2,1,{ a => 1, b => 2 }];
 print Dumper($a),$/;
 
 for(1,2,3,4,6,9,15) {
-    #{ do
+    ##{ do
         let fib = 1 : 1 : zipWith (+) fib (tail fib)
 
         i <- readScalar =<< cap "$_"
         liftIO $ putStrLn $ show $ fib !! i
     };
+}
+
+sub fact {
+  ##{ do
+    [n] <- readArray =<< cap "@_"
+    if n == 0
+      then return (1 :: Int)
+      else callArgs "fact" (n - 1) >>= readScalar >>= return . (n *)
+  }
+}
+for(1..5) {
+  print "fact($_) = ", fact($_), $/;
 }
 
 #$cv->recv;
