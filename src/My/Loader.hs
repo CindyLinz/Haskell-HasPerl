@@ -4,6 +4,7 @@ module My.Loader
   ) where
 
 import Control.Applicative
+import qualified Control.Monad.Catch as Catch
 import Control.Monad.Trans.Class
 import Unsafe.Coerce
 
@@ -20,6 +21,7 @@ import Perl.Eval
 import Perl.Type
 import Perl.Sub
 import Perl.Constant
+import Perl.Accessor hiding (eval)
 
 import My.MonadUtil
 import qualified My.Parser
@@ -34,15 +36,26 @@ strReplace str find replace = go str where
 prepareLoader :: PerlT s IO ()
 prepareLoader = do
   defSub "HasPerl::require" $ \modName -> do
+    dirs <- cap "@INC" >>= readArray
     let
       filename = strReplace modName "::" "/" ++ ".hspm"
-    ret <- loadHasperl filename
-    return (ret :: SVArray)
+      tryLoad [] = die $ "Can't locate " ++ filename ++ " in @INC (@INC contains: " ++ unwords dirs ++ ") at HasPerl"
+      tryLoad (dir:dirs) = Catch.handle (\e -> let _e = e :: Catch.SomeException in tryLoad dirs) (loadHasperl (dir ++ "/" ++ filename))
+    loaded <- readScalar =<< cap "%INC" %- filename 
+    if loaded == (0 :: Int)
+      then do
+        ret <- tryLoad dirs
+        if ret == (0 :: Int)
+          then die $ filename ++ " did not return a true value at HasPerl"
+          else do
+            cap "%INC" %- filename $= (1 :: Int)
+            return ret
+      else return (1 :: Int)
 
 loadHasperl :: Retrievable ret => FilePath -> PerlT s IO ret
 loadHasperl path = do
   (perlPath, haskellPath) <- liftIO $ My.Parser.compileFile path
-  defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
+  res <- defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
     runGhcT (Just libdir) $ do
       dflags <- getSessionDynFlags
       let pkg = PkgConfFile "/home/cindy/.ghc/x86_64-linux-7.6.3/package.conf.d/"
@@ -60,4 +73,7 @@ loadHasperl path = do
       lift modInit
 
       perl <- liftIO $ readFile perlPath
-      lift $ eval perl
+      lift $ Catch.try $ eval perl
+  case res of
+    Right result -> return result
+    Left e -> Catch.throwM (e :: Catch.SomeException)

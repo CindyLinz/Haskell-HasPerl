@@ -1,5 +1,8 @@
 module Main where
 
+import qualified Control.Monad.Catch as Catch
+import Control.Monad.IO.Class
+
 import System.Environment (getArgs)
 
 import Perl.Monad
@@ -13,7 +16,7 @@ main = do
     perlFilename = fetchPerlFilename args
   runPerlT $ do
     prepareLoader
-    loadHasperl perlFilename
+    Catch.catch (loadHasperl perlFilename) (\e -> liftIO $ putStr $ show (e :: Catch.SomeException))
 
 fetchPerlFilename = go where
   go [] = "/dev/stdin"
