@@ -35,7 +35,7 @@ compileFile path = do
         '/' -> "::" ++ others
         '\\' -> "::" ++ others
         _ -> c : others
-    (perl, haskell) = parse (stringToByteString namePrefix) src
+    (perl, haskell) = parse path (stringToByteString namePrefix) src
   BL.writeFile perlPath perl
   BL.writeFile haskellPath haskell
   return (perlPath, haskellPath)
@@ -71,17 +71,28 @@ makeSpace
 makeSpace n = BL.pack $ map (fromIntegral . ord) $ replicate n ' '
 
 parse
-  :: BL.ByteString -- ^ prefix
+  :: String -- ^ filename
+  -> BL.ByteString -- ^ prefix
   -> BL.ByteString -- ^ hasperl
   -> (BL.ByteString, BL.ByteString) -- ^ (perl, haskell)
-parse prefix hspl = (perl, haskell) where
+parse filename prefix hspl = (perl, haskell) where
   lexemes = extractHaskell hspl
+
+  commentedHsInPerl :: BL.ByteString -> BL.ByteString
+  commentedHsInPerl hs =
+    let
+      (line, remain) = BL.span (/= fromIntegral (ord '\n')) hs
+    in if BL.null remain
+        then
+          ""
+        else
+          "# " `BL.append` line `BL.append` "\n" `BL.append` commentedHsInPerl (BL.tail remain)
 
   perl = genPerl 0 lexemes
   genPerl ser [] = BL.empty
   genPerl ser (PlPart p : others) = p `BL.append` genPerl ser others
-  genPerl ser (HsDecl _ : others) = genPerl ser others
-  genPerl ser (HsExpr _ : others) = 32 `BL.cons` lambdaName prefix ser `BL.append` "()" `BL.append` genPerl (id $! ser+1) others
+  genPerl ser (HsDecl h : others) = commentedHsInPerl h `BL.append` genPerl ser others
+  genPerl ser (HsExpr h : others) = commentedHsInPerl h `BL.append` (32 `BL.cons` lambdaName prefix ser `BL.append` "()" `BL.append` genPerl (id $! ser+1) others)
 
   haskell = preludeDecl `BL.append` haskellDecl `BL.append` initDecl
   initDecl = "init :: Perl.Type.PerlT s IO ()\ninit = do { return () " `BL.append` registerSubs `BL.append` "\n}\n" where
@@ -95,7 +106,16 @@ parse prefix hspl = (perl, haskell) where
     [] -> BL.empty
     PlPart p : others -> genHaskellDecl lineNo' offset' others
       where (lineNo', offset') = analyzePos lineNo offset p
-    HsDecl h : others -> "-- Decl\n" `BL.append` makeSpace offset `BL.append` h `BL.append` "\n" `BL.append` genHaskellDecl lineNo' offset' others
+    HsDecl h : others ->
+      "{-# LINE "
+      `BL.append` stringToByteString (show (lineNo + 1))
+      `BL.append` " "
+      `BL.append` stringToByteString (show filename)
+      `BL.append` " #-} -- Decl\n"
+      `BL.append` makeSpace offset
+      `BL.append` h
+      `BL.append` "\n"
+      `BL.append` genHaskellDecl lineNo' offset' others
       where (lineNo', offset') = analyzePos lineNo offset h
     HsExpr h : others -> genHaskellDecl lineNo' offset' others
       where (lineNo', offset') = analyzePos lineNo offset h
@@ -107,7 +127,15 @@ parse prefix hspl = (perl, haskell) where
       where (lineNo', offset') = analyzePos lineNo offset p
     HsDecl h : others -> genHaskellExprs lineNo' offset' others
       where (lineNo', offset') = analyzePos lineNo offset h
-    HsExpr h : others -> (makeSpace offset `BL.append` h) : genHaskellExprs lineNo' offset' others
+    HsExpr h : others ->
+      ( "{-# LINE "
+      `BL.append` stringToByteString (show (lineNo + 1))
+      `BL.append` " "
+      `BL.append` stringToByteString (show filename)
+      `BL.append` " #-}\n"
+      `BL.append` makeSpace (offset + 2)
+      `BL.append` h
+      ) : genHaskellExprs lineNo' offset' others
       where (lineNo', offset') = analyzePos lineNo offset h
 
 extractHaskell
