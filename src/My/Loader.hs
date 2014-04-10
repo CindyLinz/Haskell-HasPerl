@@ -22,6 +22,7 @@ import Perl.Type
 import Perl.Sub
 import Perl.Constant
 import Perl.Accessor hiding (eval)
+import Perl.Internal.MonadGlue (suppressWarnings, restoreWarnings)
 
 import My.MonadUtil
 import qualified My.Parser
@@ -41,7 +42,9 @@ prepareLoader = do
       filename = strReplace modName "::" "/" ++ ".hspm"
       tryLoad [] = die $ "Can't locate " ++ filename ++ " in @INC (@INC contains: " ++ unwords dirs ++ ") at HasPerl"
       tryLoad (dir:dirs) = Catch.handle (\e -> let _e = e :: Catch.SomeException in tryLoad dirs) (loadHasperl (dir ++ "/" ++ filename))
+    originWarn <- suppressWarnings
     loaded <- readScalar =<< cap "%INC" %- filename 
+    restoreWarnings originWarn
     if loaded == (0 :: Int)
       then do
         ret <- tryLoad dirs
