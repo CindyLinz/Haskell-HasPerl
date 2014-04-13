@@ -17,7 +17,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Data.List
-import Perl.Embed
 import Perl.Call
 import Perl.AV
 import Perl.SV
@@ -101,7 +100,7 @@ sub PUSH {
   ##{ do
     let capP = cap "@_" @- 0 @- 0
     p <- return . intToStablePtr =<< readScalar =<< capP
-    (_:ns) <- fromAV =<< findAV "@_"
+    (_:ns) <- readArray =<< cap "@_"
     p' <- liftIO $ do
       set <- deRefStablePtr p
       freeStablePtr p
