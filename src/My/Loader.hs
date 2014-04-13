@@ -61,12 +61,8 @@ loadHasperl path = do
   res <- defaultErrorHandler defaultFatalMessager defaultFlushOut $ do
     runGhcT (Just libdir) $ do
       dflags <- getSessionDynFlags
-      let pkg = PkgConfFile "/home/cindy/.ghc/x86_64-linux-7.6.3/package.conf.d/"
       setSessionDynFlags $ dflags { hscTarget = HscInterpreted
                                   , ghcLink   = LinkInMemory
-                                  --, packageFlags = ExposePackage "time" : packageFlags dflags
-                                  , extraPkgConfs = (pkg:) . extraPkgConfs dflags
-                                  --, verbosity = 0
                                   }
       setTargets =<< sequence [guessTarget haskellPath Nothing]
       load LoadAllTargets
